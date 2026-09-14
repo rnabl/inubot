@@ -24,10 +24,8 @@ export function App() {
       return;
     }
     
-    // If in Telegram browser, show instructions instead of trying to create passkey
+    // If in Telegram browser, just return - UI will show instructions
     if (isInTelegramBrowser) {
-      setError("Please tap the ⋯ (three dots) in the top right and select 'Open in Safari' to continue.");
-      setStatus("error");
       return;
     }
     
@@ -90,43 +88,60 @@ export function App() {
   return (
     <main className="wrap">
       <h1>InuBot wallet</h1>
-      <p>
-        One Face ID creates a passkey-owned smart account. Telegram keeps a scoped session key for
-        everyday swaps. Raising the cap or withdrawing needs Face ID again.
-      </p>
-
-      {bootstrap && !bootstrap.alreadySetup && status !== "done" && (
-        <div className="card">
-          <p>
-            Daily cap: <strong>{bootstrap.dailyCapEth} ETH</strong>
+      
+      {isInTelegramBrowser ? (
+        <div className="card" style={{ backgroundColor: "#fff3cd", border: "2px solid #ffc107", padding: "2rem" }}>
+          <h2 style={{ margin: "0 0 1rem 0", color: "#856404" }}>⚠️ Open in Safari</h2>
+          <p style={{ fontSize: "1.1rem", marginBottom: "1rem" }}>
+            Face ID/Touch ID won't work in Telegram's browser.
           </p>
-          <p>Session lasts 30 days, then automation stops until you renew.</p>
-          <p>Lose this device without a second passkey and the wallet is unrecoverable.</p>
+          <p style={{ fontSize: "1.1rem", fontWeight: "bold" }}>
+            Tap the <strong>⋯</strong> (three dots) in the top right corner
+            <br />
+            and select <strong>"Open in Safari"</strong>
+          </p>
         </div>
-      )}
+      ) : (
+        <>
+          <p>
+            One Face ID creates a passkey-owned smart account. Telegram keeps a scoped session key for
+            everyday swaps. Raising the cap or withdrawing needs Face ID again.
+          </p>
 
-      {status === "loading" && <p>Loading…</p>}
-      {status === "ready" && (
-        <p>
-          <button type="button" onClick={onCreate}>
-            Create wallet with Face ID
-          </button>
-        </p>
+          {bootstrap && !bootstrap.alreadySetup && status !== "done" && (
+            <div className="card">
+              <p>
+                Daily cap: <strong>{bootstrap.dailyCapEth} ETH</strong>
+              </p>
+              <p>Session lasts 30 days, then automation stops until you renew.</p>
+              <p>Lose this device without a second passkey and the wallet is unrecoverable.</p>
+            </div>
+          )}
+
+          {status === "loading" && <p>Loading…</p>}
+          {status === "ready" && (
+            <p>
+              <button type="button" onClick={onCreate}>
+                Create wallet with Face ID
+              </button>
+            </p>
+          )}
+          {status === "working" && (
+            <p>
+              <button type="button" disabled>
+                Waiting for Face ID…
+              </button>
+            </p>
+          )}
+          {status === "done" && (
+            <div className="card">
+              <p className="ok">Wallet ready. Return to Telegram and use /wallet.</p>
+              <p className="mono">{address}</p>
+            </div>
+          )}
+          {error && <p className="error">{error}</p>}
+        </>
       )}
-      {status === "working" && (
-        <p>
-          <button type="button" disabled>
-            Waiting for Face ID…
-          </button>
-        </p>
-      )}
-      {status === "done" && (
-        <div className="card">
-          <p className="ok">Wallet ready. Return to Telegram and use /wallet.</p>
-          <p className="mono">{address}</p>
-        </div>
-      )}
-      {error && <p className="error">{error}</p>}
     </main>
   );
 }
