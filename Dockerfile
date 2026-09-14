@@ -18,5 +18,5 @@ RUN pnpm --filter @inubot/ceremony build
 # Expose port
 EXPOSE 3000
 
-# Start command
-CMD ["sh", "-c", "pnpm --filter @inubot/db exec prisma migrate deploy && pnpm --filter @inubot/bot start"]
+# Start command (skip migration for now - lock is stuck)
+CMD ["pnpm", "--filter", "@inubot/bot", "start"]
