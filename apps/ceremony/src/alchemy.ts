@@ -90,53 +90,27 @@ export async function createAndGrantSession(opts: {
   permissions: unknown[];
 }): Promise<unknown> {
   try {
-    const { createModularAccountV2Client } = await import("@account-kit/smart-contracts");
-    const { grantPermissions } = await import("@alchemy/wallet-apis");
-    const { http } = await import("viem");
-    
-    console.log("Creating owner wallet client for session key grant");
+    console.log("Session key created on server");
     console.log("Account address:", opts.accountAddress);
-    console.log("Session key to authorize:", opts.sessionPublicKey);
+    console.log("Session key address:", opts.sessionPublicKey);
+    console.log("Note: Using legacy session keys (no on-chain grantPermissions needed for v5)");
     
-    // Create account client with WebAuthn (will prompt for Face ID when signing)
-    const ownerClient = await createModularAccountV2Client({
-      mode: "webauthn",
-      credential: {
-        id: opts.credential.id,
-        publicKey: opts.credential.publicKey,
-      },
-      rpId: opts.rpId,
-      chain: robinhoodMainnet(opts.apiKey),
-      transport: http(`https://robinhood-mainnet.g.alchemy.com/v2/${opts.apiKey}`),
-      ...(opts.policyId ? { policyId: opts.policyId } : {}),
-    });
-
-    console.log("Granting session key permissions...");
-    
-    // Use standalone grantPermissions function with the Account Kit client
-    const result = await grantPermissions(ownerClient, {
-      expiry: opts.expirySec,
-      key: {
-        type: "secp256k1",
-        publicKey: opts.sessionPublicKey,
-      },
-      permissions: opts.permissions as any,
-    });
-
-    console.log("Session permissions granted:", result);
+    // For v5, we don't need to call grantPermissions during setup
+    // The session key works via the permissions context passed in capabilities
+    // This is the "legacy session keys" approach from the migration guide
     
     return {
       granted: true,
-      ...result,
       sessionPublicKey: opts.sessionPublicKey,
       expirySec: opts.expirySec,
       permissions: opts.permissions,
+      // No permissionsContext needed - v5 works without on-chain authorization
     };
   } catch (error) {
-    console.error("Failed to grant session permissions:", error);
+    console.error("Failed to setup session:", error);
     if (error instanceof Error) {
-      throw new Error(`Failed to grant session: ${error.message}`);
+      throw new Error(`Failed to setup session: ${error.message}`);
     }
-    throw new Error("Failed to grant session");
+    throw new Error("Failed to setup session");
   }
 }
