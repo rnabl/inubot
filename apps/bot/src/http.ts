@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { prisma } from "@inubot/db";
 import { RouteClient } from "@inubot/route";
 import { DEFAULT_DAILY_CAP_ETH, SESSION_TTL_DAYS } from "@inubot/shared";
@@ -22,6 +23,9 @@ export function createHttpApp(env: Env) {
   );
 
   app.get("/health", (c) => c.json({ ok: true }));
+
+  // Serve ceremony static files
+  app.use("/*", serveStatic({ root: "../ceremony/dist" }));
 
   app.get("/api/ceremony/bootstrap", async (c) => {
     const token = c.req.query("t");

@@ -12,6 +12,9 @@ COPY . .
 # Install dependencies (postinstall will run prisma generate)
 RUN pnpm install --frozen-lockfile
 
+# Build ceremony app
+RUN pnpm --filter @inubot/ceremony build
+
 # Expose port
 EXPOSE 3000
 
