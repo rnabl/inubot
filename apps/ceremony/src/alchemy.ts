@@ -47,6 +47,9 @@ export async function requestWebAuthnAccount(
     const { createModularAccountV2Client } = await import("@account-kit/smart-contracts");
     const { alchemy } = await import("@account-kit/infra");
     
+    console.log("Creating WebAuthn account with rpId:", rpId);
+    console.log("Credential ID:", credential.id);
+    
     const client = await createModularAccountV2Client({
       mode: "webauthn",
       credential: {
@@ -58,9 +61,13 @@ export async function requestWebAuthnAccount(
       transport: alchemy({ apiKey }),
     });
     
+    console.log("Account created:", client.account.address);
     return client.account.address;
   } catch (error) {
     console.error("Failed to create WebAuthn account:", error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to create wallet account: ${error.message}`);
+    }
     throw new Error("Failed to create wallet account");
   }
 }
