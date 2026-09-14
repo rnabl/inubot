@@ -19,4 +19,4 @@ RUN pnpm --filter @inubot/ceremony build
 EXPOSE 3000
 
 # Start command
-CMD ["sh", "-c", "pnpm db:migrate && pnpm --filter @inubot/bot start"]
+CMD ["sh", "-c", "pnpm --filter @inubot/db exec prisma migrate deploy && pnpm --filter @inubot/bot start"]
