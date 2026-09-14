@@ -46,10 +46,13 @@ export async function requestWebAuthnAccount(
   const result = await alchemyRpc<{ accountAddress: Address }>(apiKey, "wallet_requestAccount", [
     {
       signer: {
-        type: "webauthn-p256",
-        publicKey: { x, y },
+        type: "webauthn",
+        publicKey: {
+          x,
+          y,
+        },
       },
-      creationHint: "mav2-webauthn",
+      creationHint: "mav2",
     },
   ]);
   return result.accountAddress;
