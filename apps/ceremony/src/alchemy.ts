@@ -90,11 +90,19 @@ export async function createAndGrantSession(opts: {
   permissions: unknown[];
 }): Promise<unknown> {
   try {
+    const { createSmartWalletClient, alchemyWalletTransport, grantPermissions } = await import("@alchemy/wallet-apis");
+    const { privateKeyToAccount } = await import("viem/accounts");
+    
+    console.log("Creating owner wallet client for session key grant");
+    console.log("Account address:", opts.accountAddress);
+    console.log("Session key to authorize:", opts.sessionPublicKey);
+    
+    // Create wallet client with the passkey as owner
+    // For grantPermissions, we need to sign with the owner (passkey)
+    // This is done by creating a client that will prompt for WebAuthn
     const { createModularAccountV2Client } = await import("@account-kit/smart-contracts");
-    const { createWalletClient } = await import("@alchemy/wallet-apis");
     const { http } = await import("viem");
     
-    // Create WebAuthn client for the owner
     const ownerClient = await createModularAccountV2Client({
       mode: "webauthn",
       credential: {
@@ -107,18 +115,11 @@ export async function createAndGrantSession(opts: {
       ...(opts.policyId ? { policyId: opts.policyId } : {}),
     });
 
-    // Create a Wallet API v5 client from the owner account
-    const walletClient = createWalletClient({
-      transport: http(`https://robinhood-mainnet.g.alchemy.com/v2/${opts.apiKey}`),
-      chain: robinhoodMainnet(opts.apiKey),
-      account: ownerClient.account,
-    });
-
-    console.log("Granting session key permissions via Wallet APIs v5");
+    console.log("Granting session key permissions...");
     
-    // Use v5's grantPermissions API
-    const result = await walletClient.grantPermissions({
-      account: opts.accountAddress,
+    // Use grantPermissions to authorize the session key
+    // This submits a UserOp signed by the passkey owner
+    const result = await grantPermissions(ownerClient, {
       expirySec: opts.expirySec,
       key: {
         publicKey: opts.sessionPublicKey,
@@ -131,7 +132,7 @@ export async function createAndGrantSession(opts: {
     
     return {
       granted: true,
-      context: result.context,
+      ...result,
       sessionPublicKey: opts.sessionPublicKey,
       expirySec: opts.expirySec,
       permissions: opts.permissions,
