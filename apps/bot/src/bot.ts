@@ -31,7 +31,8 @@ function helpText(): string {
     "/start — create wallet (Face ID in Safari, one time)",
     "/wallet — address, ETH, deposit QR",
     "/holdings — token balances",
-    "/settings — slippage & preferences",
+    "/settings — slippage & default withdraw address",
+    "/withdraw — send ETH or tokens (requires Face ID)",
     "Paste a contract address to buy or sell",
     "/help — this list",
     "",
@@ -50,6 +51,38 @@ export function createBot(env: Env) {
 
   bot.command("settings", async (ctx) => {
     await sendSettings(ctx, env);
+  });
+
+  bot.command("withdraw", async (ctx) => {
+    const telegramId = String(ctx.from?.id ?? "");
+    const user = await getUserByTelegram(telegramId);
+    if (!user?.wallet) {
+      await ctx.reply("No wallet yet. Use /start.");
+      return;
+    }
+
+    const balance = await publicClient.getBalance({ address: user.wallet.address as `0x${string}` });
+    const ethBalance = formatEther(balance);
+
+    const keyboard = new InlineKeyboard();
+    
+    if (user.defaultWithdrawAddress) {
+      keyboard.text(`Quick Withdraw to ${shortAddress(user.defaultWithdrawAddress)}`, "withdraw:quick").row();
+    }
+    keyboard.text("Withdraw to Custom Address", "withdraw:custom");
+
+    await ctx.reply(
+      [
+        `💰 Withdraw ETH`,
+        ``,
+        `Balance: ${ethBalance} ETH`,
+        ``,
+        user.defaultWithdrawAddress 
+          ? `Default address: \`${user.defaultWithdrawAddress}\`` 
+          : `No default address set. Use /settings to add one.`,
+      ].join("\n"),
+      { reply_markup: keyboard, parse_mode: "Markdown" }
+    );
   });
 
   bot.command("start", async (ctx) => {
@@ -265,6 +298,55 @@ export function createBot(env: Env) {
     await sendSettings(ctx, env, true);
   });
 
+  bot.callbackQuery("settings:withdraw", async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(
+      [
+        `📤 Default Withdraw Address`,
+        ``,
+        `Send me an ETH address to set as your default withdraw destination.`,
+        ``,
+        `This allows quick withdrawals with one tap.`,
+        `Send "clear" to remove the current default.`,
+      ].join("\n"),
+      { reply_markup: new InlineKeyboard().text("🔙 Back", "settings") }
+    );
+  });
+
+  bot.callbackQuery("withdraw:quick", async (ctx) => {
+    await ctx.answerCallbackQuery();
+    const user = await getUserByTelegram(String(ctx.from.id));
+    if (!user?.defaultWithdrawAddress) {
+      await ctx.answerCallbackQuery({ text: "No default address set!", show_alert: true });
+      return;
+    }
+    await ctx.editMessageText(
+      [
+        `💸 Quick Withdraw`,
+        ``,
+        `To: \`${user.defaultWithdrawAddress}\``,
+        ``,
+        `Send the amount to withdraw (e.g., "0.1" for 0.1 ETH)`,
+      ].join("\n"),
+      { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Cancel", "close") }
+    );
+  });
+
+  bot.callbackQuery("withdraw:custom", async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(
+      [
+        `💸 Custom Withdraw`,
+        ``,
+        `Send the recipient address and amount in this format:`,
+        `0x123...abc 0.1`,
+        ``,
+        `(address followed by amount in ETH)`,
+      ].join("\n"),
+      { reply_markup: new InlineKeyboard().text("🔙 Cancel", "close") }
+    );
+  });
+
   bot.callbackQuery("close", async (ctx) => {
     await ctx.answerCallbackQuery();
     await ctx.deleteMessage();
@@ -436,12 +518,17 @@ async function sendSettings(
     ``,
     `🎯 Slippage: ${user.slippageBps / 100}%`,
     session ? `💸 Daily cap left: ${formatTokenAmount(remaining.toString(), 18)} ETH` : `⚠️ No active session`,
+    user.defaultWithdrawAddress 
+      ? `📤 Default withdraw: ${shortAddress(user.defaultWithdrawAddress)}`
+      : `📤 Default withdraw: Not set`,
     ``,
     `Tap a setting to change it:`,
   ];
 
   const keyboard = new InlineKeyboard()
     .text("🎯 Slippage", "settings:slippage")
+    .row()
+    .text("📤 Default Withdraw Address", "settings:withdraw")
     .row()
     .text("🔙 Close", "close");
 
