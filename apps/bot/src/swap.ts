@@ -14,7 +14,7 @@ import {
   waitForCall,
   type EncryptedBlob,
 } from "@inubot/wallet";
-import { parseEther, type Address, type Hex } from "viem";
+import { parseEther, isHex, type Address, type Hex } from "viem";
 import type { Env } from "./env.js";
 import { activeSession, getUserByTelegram } from "./users.js";
 
@@ -100,6 +100,17 @@ export async function executeSwap(opts: {
   ) as Hex;
   const signer = sessionAccountFromPrivateKey(privateKey);
 
+  // Extract permissionsContext from stored permissions
+  let permissionsContext: Hex | undefined;
+  try {
+    const perms = JSON.parse(session.permissionsJson);
+    if (perms?.permissionsContext && isHex(perms.permissionsContext)) {
+      permissionsContext = perms.permissionsContext;
+    }
+  } catch {
+    // Ignore parse errors
+  }
+
   const tx = await prisma.tx.create({
     data: {
       walletId: wallet.id,
@@ -118,6 +129,7 @@ export async function executeSwap(opts: {
       account: wallet.address as Address,
       signer,
       calls: built.calls,
+      permissionsContext,
     });
     const status = (await waitForCall({
       apiKey: opts.env.ALCHEMY_API_KEY,
@@ -125,6 +137,7 @@ export async function executeSwap(opts: {
       account: wallet.address as Address,
       signer,
       id,
+      permissionsContext,
     })) as {
       status?: string;
       receipts?: { transactionHash?: string }[];

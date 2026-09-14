@@ -72,6 +72,9 @@ importers:
       '@account-kit/smart-contracts':
         specifier: ^4.88.5
         version: 4.88.5(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(viem@2.56.5(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.6.5))
+      '@alchemy/common':
+        specifier: ^5.2.0
+        version: 5.2.0(viem@2.56.5(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.6.5))
       '@alchemy/wallet-apis':
         specifier: ^5.2.0
         version: 5.2.0(@solana/web3.js@1.99.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6))(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(viem@2.56.5(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.6.5))

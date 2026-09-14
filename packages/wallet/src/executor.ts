@@ -132,12 +132,14 @@ export async function submitSessionCalls(opts: {
   account: Address;
   signer: PrivateKeyAccount;
   calls: { to: Address; data: Hex; value: bigint }[];
+  permissionsContext?: Hex;
 }): Promise<{ id: string }> {
   const client = createSessionWalletClient({
     apiKey: opts.apiKey,
     policyId: opts.policyId,
     account: opts.account,
     signer: opts.signer,
+    permissionsContext: opts.permissionsContext,
   });
 
   const { id } = await client.sendCalls({
@@ -152,12 +154,14 @@ export async function waitForCall(opts: {
   account: Address;
   signer: PrivateKeyAccount;
   id: string;
+  permissionsContext?: Hex;
 }) {
   const client = createSessionWalletClient({
     apiKey: opts.apiKey,
     policyId: opts.policyId,
     account: opts.account,
     signer: opts.signer,
+    permissionsContext: opts.permissionsContext,
   });
   return client.waitForCallsStatus({ id: opts.id });
 }

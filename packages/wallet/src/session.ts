@@ -22,6 +22,7 @@ export type AlchemyClientsOptions = {
   policyId?: string;
   account: Address;
   signer: PrivateKeyAccount;
+  permissionsContext?: Hex;
 };
 
 export function createSessionWalletClient(opts: AlchemyClientsOptions) {
@@ -31,5 +32,6 @@ export function createSessionWalletClient(opts: AlchemyClientsOptions) {
     signer: opts.signer,
     account: opts.account,
     ...(opts.policyId ? { paymaster: { policyId: opts.policyId } } : {}),
+    ...(opts.permissionsContext ? { permissionsContext: opts.permissionsContext } : {}),
   });
 }

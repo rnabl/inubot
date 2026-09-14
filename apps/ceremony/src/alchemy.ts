@@ -91,28 +91,29 @@ export async function createAndGrantSession(opts: {
 }): Promise<unknown> {
   try {
     const { createSmartWalletClient, alchemyWalletTransport, grantPermissions } = await import("@alchemy/wallet-apis");
-    const { privateKeyToAccount } = await import("viem/accounts");
+    const { robinhoodMainnet: robinhoodChain } = await import("@alchemy/common/chains");
     
     console.log("Creating owner wallet client for session key grant");
     console.log("Account address:", opts.accountAddress);
     console.log("Session key to authorize:", opts.sessionPublicKey);
     
-    // Create wallet client with the passkey as owner
-    // For grantPermissions, we need to sign with the owner (passkey)
-    // This is done by creating a client that will prompt for WebAuthn
-    const { createModularAccountV2Client } = await import("@account-kit/smart-contracts");
-    const { http } = await import("viem");
-    
-    const ownerClient = await createModularAccountV2Client({
-      mode: "webauthn",
+    // Create a WebAuthn signer that will prompt for Face ID
+    const webauthnSigner = {
+      type: "webauthn" as const,
       credential: {
         id: opts.credential.id,
         publicKey: opts.credential.publicKey,
       },
       rpId: opts.rpId,
-      chain: robinhoodMainnet(opts.apiKey),
-      transport: http(`https://robinhood-mainnet.g.alchemy.com/v2/${opts.apiKey}`),
-      ...(opts.policyId ? { policyId: opts.policyId } : {}),
+    };
+    
+    // Create smart wallet client with WebAuthn signer (owner)
+    const ownerClient = createSmartWalletClient({
+      transport: alchemyWalletTransport({ apiKey: opts.apiKey }),
+      chain: robinhoodChain,
+      signer: webauthnSigner,
+      account: opts.accountAddress,
+      ...(opts.policyId ? { paymaster: { policyId: opts.policyId } } : {}),
     });
 
     console.log("Granting session key permissions...");
