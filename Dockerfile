@@ -3,17 +3,14 @@ FROM node:22-slim
 WORKDIR /app
 
 # Install pnpm and openssl (needed by Prisma)
-RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm
 
-# Copy everything first (simpler approach)
+# Copy everything
 COPY . .
 
-# Install dependencies (skip postinstall scripts, we'll run generate manually)
-RUN pnpm install --frozen-lockfile --ignore-scripts
-
-# Generate Prisma client
-RUN pnpm db:generate
+# Install dependencies (postinstall will run prisma generate)
+RUN pnpm install --frozen-lockfile
 
 # Expose port
 EXPOSE 3000
