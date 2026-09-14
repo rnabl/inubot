@@ -31,7 +31,7 @@ export const SESSION_TTL_DAYS = 30;
 export const SWAP_DEADLINE_SECONDS = 300;
 export const APPROVE_SELECTOR = "0x095ea7b3" as Hex;
 
-export const BUY_PRESETS_ETH = ["0.01", "0.05", "0.1"] as const;
+export const BUY_PRESETS_ETH = ["0.001", "0.005", "0.01"] as const;
 export const SELL_PRESETS_BPS = [2500, 5000, 10000] as const;
 
 export const ERC20_ABI = [
