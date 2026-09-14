@@ -1,6 +1,7 @@
-import { robinhoodMainnet } from "@inubot/shared";
+import { robinhoodMainnet } from "@alchemy/common/chains";
+import { createSmartWalletClient, alchemyWalletTransport } from "@alchemy/wallet-apis";
 import { generatePrivateKey, privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
-import { http, type Address, type Hex } from "viem";
+import type { Address, Hex } from "viem";
 
 export type SessionKeyPair = {
   privateKey: Hex;
@@ -23,15 +24,12 @@ export type AlchemyClientsOptions = {
   signer: PrivateKeyAccount;
 };
 
-export async function createSessionWalletClient(opts: AlchemyClientsOptions) {
-  const { createWalletClient } = await import("@alchemy/wallet-apis");
-  
-  // Create wallet client v5 style with session key
-  return createWalletClient({
-    transport: http(`https://robinhood-mainnet.g.alchemy.com/v2/${opts.apiKey}`),
+export function createSessionWalletClient(opts: AlchemyClientsOptions) {
+  return createSmartWalletClient({
+    transport: alchemyWalletTransport({ apiKey: opts.apiKey }),
     chain: robinhoodMainnet,
-    account: opts.signer, // Session key is the signer
-    // For swaps, the session key sends from the smart account address
-    // This is handled via the "from" parameter in sendCalls
+    signer: opts.signer,
+    account: opts.account,
+    ...(opts.policyId ? { paymaster: { policyId: opts.policyId } } : {}),
   });
 }
