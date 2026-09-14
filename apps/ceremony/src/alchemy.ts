@@ -116,12 +116,9 @@ export async function createAndGrantSession(opts: {
     // Use standalone grantPermissions function with the Account Kit client
     const result = await grantPermissions(ownerClient, {
       expiry: opts.expirySec,
-      signer: {
-        type: "key",
-        data: {
-          type: "secp256k1",
-          publicKey: opts.sessionPublicKey,
-        },
+      key: {
+        type: "secp256k1",
+        publicKey: opts.sessionPublicKey,
       },
       permissions: opts.permissions as any,
     });

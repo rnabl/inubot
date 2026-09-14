@@ -3,7 +3,7 @@ import { getAddress, type Address, type Hex } from "viem";
 import { executorSet, type RouteConfig } from "@inubot/route";
 
 export type SessionPermission =
-  | { type: "native-token-transfer"; data: { allowance: Hex } }
+  | { type: "native-token-transfer"; data: { allowance: bigint } }
   | { type: "contract-access"; data: { address: Address } }
   | { type: "functions-on-all-contracts"; data: { functions: Hex[] } };
 
@@ -15,7 +15,7 @@ export function buildSessionPermissions(
   return [
     {
       type: "native-token-transfer",
-      data: { allowance: `0x${lifetimeAllowanceWei.toString(16)}` },
+      data: { allowance: lifetimeAllowanceWei },
     },
     {
       type: "functions-on-all-contracts",
