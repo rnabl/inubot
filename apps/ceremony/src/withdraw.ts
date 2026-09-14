@@ -28,25 +28,7 @@ export async function executeWithdrawal(
       amount: data.amount,
     });
 
-    // Trigger WebAuthn authentication
-    const assertion = await navigator.credentials.get({
-      publicKey: {
-        challenge: crypto.getRandomValues(new Uint8Array(32)),
-        rpId,
-        allowCredentials: [{
-          id: base64ToArrayBuffer(data.credentialId),
-          type: "public-key",
-        }],
-        userVerification: "required",
-        timeout: 60000,
-      },
-    });
-
-    if (!assertion || assertion.type !== "public-key") {
-      throw new Error("Face ID authentication failed");
-    }
-
-    // Create account client for signing using stored credentials
+    // Create account client - this will prompt for Face ID when signing
     const client = await createModularAccountV2Client({
       mode: "webauthn",
       credential: {
@@ -59,7 +41,7 @@ export async function executeWithdrawal(
       ...(data.policyId ? { policyId: data.policyId } : {}),
     });
 
-    // Send the ETH transfer
+    // Send the ETH transfer (will prompt for Face ID)
     const amountWei = parseEther(data.amount);
     const hash = await client.sendTransaction({
       to: data.recipient,
@@ -76,14 +58,5 @@ export async function executeWithdrawal(
     }
     throw new Error("Withdrawal failed");
   }
-}
-
-function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes.buffer;
 }
 
