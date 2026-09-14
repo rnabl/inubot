@@ -39,6 +39,7 @@ model SessionKey {
   iv                   String
   tag                  String
   permissionsJson      String
+  permissionsContext   String?   // v5 grantPermissions context
   dailyCapWei          String
   lifetimeAllowanceWei String
   expiresAt            DateTime

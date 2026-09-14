@@ -91,9 +91,11 @@ export async function createAndGrantSession(opts: {
 }): Promise<unknown> {
   try {
     const { createModularAccountV2Client } = await import("@account-kit/smart-contracts");
+    const { createWalletClient } = await import("@alchemy/wallet-apis");
     const { http } = await import("viem");
     
-    const client = await createModularAccountV2Client({
+    // Create WebAuthn client for the owner
+    const ownerClient = await createModularAccountV2Client({
       mode: "webauthn",
       credential: {
         id: opts.credential.id,
@@ -105,51 +107,40 @@ export async function createAndGrantSession(opts: {
       ...(opts.policyId ? { policyId: opts.policyId } : {}),
     });
 
-    const created = await alchemyRpc<{
-      sessionId?: string;
-      context?: unknown;
-      signatureRequest?: {
-        type?: string;
-        data?: {
-          domain: Record<string, unknown>;
-          types: Record<string, { name: string; type: string }[]>;
-          primaryType: string;
-          message: Record<string, unknown>;
-        };
-        rawPayload?: Hex;
-      };
-    }>(opts.apiKey, "wallet_createSession", [
-      {
-        account: opts.accountAddress,
-        chainId: `0x${(4663).toString(16)}`,
-        expirySec: opts.expirySec,
-        key: { publicKey: opts.sessionPublicKey, type: "secp256k1" },
-        permissions: opts.permissions,
-      },
-    ]);
+    // Create a Wallet API v5 client from the owner account
+    const walletClient = createWalletClient({
+      transport: http(`https://robinhood-mainnet.g.alchemy.com/v2/${opts.apiKey}`),
+      chain: robinhoodMainnet(opts.apiKey),
+      account: ownerClient.account,
+    });
 
-    if (created.signatureRequest?.data && "signTypedData" in client) {
-      const signature = await (
-        client as unknown as {
-          signTypedData: (typed: {
-            domain: Record<string, unknown>;
-            types: Record<string, { name: string; type: string }[]>;
-            primaryType: string;
-            message: Record<string, unknown>;
-          }) => Promise<Hex>;
-        }
-      ).signTypedData(created.signatureRequest.data);
-      return { ...created, signature };
-    }
-
-    return created;
-  } catch (error) {
-    console.warn("Modular account grant fell back to session context only", error);
-    return {
+    console.log("Granting session key permissions via Wallet APIs v5");
+    
+    // Use v5's grantPermissions API
+    const result = await walletClient.grantPermissions({
       account: opts.accountAddress,
+      expirySec: opts.expirySec,
+      key: {
+        publicKey: opts.sessionPublicKey,
+        type: "secp256k1",
+      },
+      permissions: opts.permissions as any,
+    });
+
+    console.log("Session permissions granted:", result);
+    
+    return {
+      granted: true,
+      context: result.context,
       sessionPublicKey: opts.sessionPublicKey,
       expirySec: opts.expirySec,
       permissions: opts.permissions,
     };
+  } catch (error) {
+    console.error("Failed to grant session permissions:", error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to grant session: ${error.message}`);
+    }
+    throw new Error("Failed to grant session");
   }
 }

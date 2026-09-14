@@ -134,20 +134,32 @@ export async function submitSessionCalls(opts: {
   calls: { to: Address; data: Hex; value: bigint }[];
   permissions?: unknown;
 }): Promise<{ id: string }> {
-  const client = createSessionWalletClient({
+  const client = await createSessionWalletClient({
     apiKey: opts.apiKey,
     policyId: opts.policyId,
     account: opts.account,
     signer: opts.signer,
   });
 
-  const { id } = await client.sendCalls({
-    calls: opts.calls,
-    ...(opts.permissions
-      ? { capabilities: { permissions: opts.permissions } }
-      : {}),
+  // Use Wallet APIs v5 sendCalls with the smart account address as "from"
+  const result = await client.sendCalls({
+    calls: opts.calls.map(c => ({
+      to: c.to,
+      data: c.data,
+      value: c.value,
+    })),
+    from: opts.account, // Smart account address
+    ...(opts.policyId ? {
+      capabilities: {
+        paymaster: {
+          policyId: opts.policyId,
+        },
+        ...(opts.permissions ? { permissions: opts.permissions } : {}),
+      },
+    } : {}),
   });
-  return { id };
+
+  return { id: result };
 }
 
 export async function waitForCall(opts: {
@@ -157,11 +169,13 @@ export async function waitForCall(opts: {
   signer: PrivateKeyAccount;
   id: string;
 }) {
-  const client = createSessionWalletClient({
+  const client = await createSessionWalletClient({
     apiKey: opts.apiKey,
     policyId: opts.policyId,
     account: opts.account,
     signer: opts.signer,
   });
+  
+  // In v5, we wait for the call status using the returned ID
   return client.waitForCallsStatus({ id: opts.id });
 }

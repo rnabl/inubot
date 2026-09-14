@@ -150,6 +150,9 @@ export function createHttpApp(env: Env) {
         iv: nonce.iv,
         tag: nonce.tag,
         permissionsJson: JSON.stringify(body.permissions ?? {}),
+        permissionsContext: typeof body.permissions === 'object' && body.permissions !== null && 'context' in body.permissions
+          ? JSON.stringify((body.permissions as any).context)
+          : null,
         dailyCapWei: dailyCapWei.toString(),
         lifetimeAllowanceWei: lifetimeWei.toString(),
         expiresAt: nonce.expiresAt,
