@@ -137,7 +137,6 @@ export async function executeSwap(opts: {
       account: wallet.address as Address,
       signer,
       id,
-      permissionsContext,
     })) as {
       status?: string;
       receipts?: { transactionHash?: string }[];

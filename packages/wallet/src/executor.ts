@@ -139,11 +139,17 @@ export async function submitSessionCalls(opts: {
     policyId: opts.policyId,
     account: opts.account,
     signer: opts.signer,
-    permissionsContext: opts.permissionsContext,
   });
 
-  const { id } = await client.sendCalls({
+  const { id} = await client.sendCalls({
     calls: opts.calls,
+    ...(opts.permissionsContext ? {
+      capabilities: {
+        permissions: {
+          context: opts.permissionsContext,
+        },
+      },
+    } : {}),
   });
   return { id };
 }
@@ -154,14 +160,12 @@ export async function waitForCall(opts: {
   account: Address;
   signer: PrivateKeyAccount;
   id: string;
-  permissionsContext?: Hex;
 }) {
   const client = createSessionWalletClient({
     apiKey: opts.apiKey,
     policyId: opts.policyId,
     account: opts.account,
     signer: opts.signer,
-    permissionsContext: opts.permissionsContext,
   });
   return client.waitForCallsStatus({ id: opts.id });
 }

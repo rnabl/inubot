@@ -10,8 +10,6 @@
     "test": "tsx --test src/**/*.test.ts"
   },
   "dependencies": {
-    "@account-kit/infra": "^4.88.5",
-    "@account-kit/smart-contracts": "^4.88.5",
     "@alchemy/wallet-apis": "^5.2.0",
     "@inubot/route": "workspace:*",
     "@inubot/shared": "workspace:*",
