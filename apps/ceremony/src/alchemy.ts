@@ -52,7 +52,7 @@ export async function requestWebAuthnAccount(
 ): Promise<Address> {
   try {
     const { createModularAccountV2Client } = await import("@account-kit/smart-contracts");
-    const { alchemy } = await import("@account-kit/infra");
+    const { http } = await import("viem");
     
     console.log("Creating WebAuthn account with rpId:", rpId);
     console.log("Credential ID:", credential.id);
@@ -65,7 +65,7 @@ export async function requestWebAuthnAccount(
       },
       rpId,
       chain: robinhoodMainnet(apiKey),
-      transport: alchemy({ apiKey }),
+      transport: http(`https://robinhood-mainnet.g.alchemy.com/v2/${apiKey}`),
     });
     
     console.log("Account created:", client.account.address);
@@ -91,7 +91,7 @@ export async function createAndGrantSession(opts: {
 }): Promise<unknown> {
   try {
     const { createModularAccountV2Client } = await import("@account-kit/smart-contracts");
-    const { alchemy } = await import("@account-kit/infra");
+    const { http } = await import("viem");
     
     const client = await createModularAccountV2Client({
       mode: "webauthn",
@@ -101,7 +101,7 @@ export async function createAndGrantSession(opts: {
       },
       rpId: opts.rpId,
       chain: robinhoodMainnet(opts.apiKey),
-      transport: alchemy({ apiKey: opts.apiKey }),
+      transport: http(`https://robinhood-mainnet.g.alchemy.com/v2/${opts.apiKey}`),
       ...(opts.policyId ? { policyId: opts.policyId } : {}),
     });
 
