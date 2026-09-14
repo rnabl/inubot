@@ -51,11 +51,23 @@ export async function createPasskey(rpId: string, userName: string): Promise<Pas
   if (typeof response.getPublicKey !== "function") {
     throw new Error("Browser did not return a passkey public key");
   }
-  const spki = new Uint8Array(response.getPublicKey() ?? []);
-  const idx = spki.lastIndexOf(0x04);
-  if (idx < 0 || spki.length - idx < 65) {
-    throw new Error("Could not read the passkey public key");
+  const publicKeyBuffer = response.getPublicKey();
+  if (!publicKeyBuffer) {
+    throw new Error("Browser returned null public key");
   }
+  const spki = new Uint8Array(publicKeyBuffer);
+  
+  // Look for uncompressed EC key marker (0x04)
+  const idx = spki.lastIndexOf(0x04);
+  if (idx < 0) {
+    console.error("SPKI bytes:", bytesToHex(spki));
+    throw new Error("Could not find EC key marker (0x04) in public key. SPKI length: " + spki.length);
+  }
+  if (spki.length - idx < 65) {
+    console.error("SPKI bytes:", bytesToHex(spki));
+    throw new Error(`Public key too short after 0x04. Found at index ${idx}, remaining: ${spki.length - idx}, need: 65`);
+  }
+  
   return {
     id: credential.id,
     publicKey: bytesToHex(spki.slice(idx, idx + 65)),
