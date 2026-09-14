@@ -1,4 +1,4 @@
-import { defineChain, type Address, type Hex } from "viem";
+import { defineChain, type Address, type Hex, publicKeyToAddress } from "viem";
 import { splitUncompressedKey, type PasskeyCredential } from "./passkey";
 
 export const robinhoodMainnet = defineChain({
@@ -40,22 +40,29 @@ async function alchemyRpc<T>(apiKey: string, method: string, params: unknown[]):
 
 export async function requestWebAuthnAccount(
   apiKey: string,
+  rpId: string,
   credential: PasskeyCredential,
 ): Promise<Address> {
-  const { x, y } = splitUncompressedKey(credential.publicKey);
-  const result = await alchemyRpc<{ accountAddress: Address }>(apiKey, "wallet_requestAccount", [
-    {
-      signer: {
-        type: "webauthn",
-        publicKey: {
-          x,
-          y,
-        },
+  try {
+    const { createModularAccountV2Client } = await import("@account-kit/smart-contracts");
+    const { alchemy } = await import("@account-kit/infra");
+    
+    const client = await createModularAccountV2Client({
+      mode: "webauthn",
+      credential: {
+        id: credential.id,
+        publicKey: credential.publicKey,
       },
-      creationHint: "mav2",
-    },
-  ]);
-  return result.accountAddress;
+      rpId,
+      chain: robinhoodMainnet,
+      transport: alchemy({ apiKey }),
+    });
+    
+    return client.account.address;
+  } catch (error) {
+    console.error("Failed to create WebAuthn account:", error);
+    throw new Error("Failed to create wallet account");
+  }
 }
 
 export async function createAndGrantSession(opts: {
@@ -71,6 +78,7 @@ export async function createAndGrantSession(opts: {
   try {
     const { createModularAccountV2Client } = await import("@account-kit/smart-contracts");
     const { alchemy } = await import("@account-kit/infra");
+    
     const client = await createModularAccountV2Client({
       mode: "webauthn",
       credential: {

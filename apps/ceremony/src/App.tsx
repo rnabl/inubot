@@ -53,7 +53,7 @@ export function App() {
     setError("");
     try {
       const credential = await createPasskey(bootstrap.rpId, `tg:${bootstrap.telegramId}`);
-      const accountAddress = await requestWebAuthnAccount(bootstrap.alchemyApiKey, credential);
+      const accountAddress = await requestWebAuthnAccount(bootstrap.alchemyApiKey, bootstrap.rpId, credential);
       const permissions = await createAndGrantSession({
         apiKey: bootstrap.alchemyApiKey,
         policyId: bootstrap.policyId,
