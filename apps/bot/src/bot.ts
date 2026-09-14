@@ -32,6 +32,7 @@ function helpText(): string {
     "InuBot — Robinhood Chain swaps via Route.",
     "",
     "/start — create wallet (Face ID in Safari, one time)",
+    "/reset — clear wallet record & re-link fresh session",
     "/wallet — address, ETH, deposit QR",
     "/holdings — token balances",
     "/settings — slippage & default withdraw address",
@@ -119,6 +120,36 @@ export function createBot(env: Env) {
       {
         reply_markup: new InlineKeyboard().url("Create wallet (Face ID)", url),
       },
+    );
+  });
+
+  bot.command("reset", async (ctx) => {
+    const telegramId = String(ctx.from?.id ?? "");
+    if (!telegramId) return;
+    const user = await getUserByTelegram(telegramId);
+    
+    if (!user?.wallet) {
+      await ctx.reply("No wallet to reset. Use /start to create one.");
+      return;
+    }
+
+    const address = user.wallet.address;
+    
+    // Delete wallet record (cascades to session keys, daily spends, txs)
+    await prisma.wallet.delete({
+      where: { id: user.wallet.id },
+    });
+
+    await ctx.reply(
+      [
+        "✅ Wallet record cleared from bot.",
+        "",
+        `Your smart account still exists on-chain:`,
+        `\`${address}\``,
+        "",
+        "Use /start to re-link with Face ID and get a fresh session key.",
+      ].join("\n"),
+      { parse_mode: "Markdown" }
     );
   });
 
