@@ -2,22 +2,15 @@ FROM node:22-slim
 
 WORKDIR /app
 
-# Install pnpm
+# Install pnpm and openssl (needed by Prisma)
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm
 
-# Copy package files
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/bot/package.json ./apps/bot/
-COPY apps/ceremony/package.json ./apps/ceremony/
-COPY packages/db/package.json ./packages/db/
-COPY packages/route/package.json ./packages/route/
-COPY packages/wallet/package.json ./packages/wallet/
-
-# Install dependencies
-RUN pnpm install --frozen-lockfile
-
-# Copy source code
+# Copy everything first (simpler approach)
 COPY . .
+
+# Install dependencies (skip postinstall scripts, we'll run generate manually)
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Generate Prisma client
 RUN pnpm db:generate
