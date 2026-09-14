@@ -90,41 +90,38 @@ export async function createAndGrantSession(opts: {
   permissions: unknown[];
 }): Promise<unknown> {
   try {
-    const { createSmartWalletClient, alchemyWalletTransport, grantPermissions } = await import("@alchemy/wallet-apis");
-    const { robinhoodMainnet: robinhoodChain } = await import("@alchemy/common/chains");
+    const { createModularAccountV2Client } = await import("@account-kit/smart-contracts");
+    const { http } = await import("viem");
     
     console.log("Creating owner wallet client for session key grant");
     console.log("Account address:", opts.accountAddress);
     console.log("Session key to authorize:", opts.sessionPublicKey);
     
-    // Create a WebAuthn signer that will prompt for Face ID
-    const webauthnSigner = {
-      type: "webauthn" as const,
+    // Create account client with WebAuthn (will prompt for Face ID when signing)
+    const ownerClient = await createModularAccountV2Client({
+      mode: "webauthn",
       credential: {
         id: opts.credential.id,
         publicKey: opts.credential.publicKey,
       },
       rpId: opts.rpId,
-    };
-    
-    // Create smart wallet client with WebAuthn signer (owner)
-    const ownerClient = createSmartWalletClient({
-      transport: alchemyWalletTransport({ apiKey: opts.apiKey }),
-      chain: robinhoodChain,
-      signer: webauthnSigner,
-      account: opts.accountAddress,
-      ...(opts.policyId ? { paymaster: { policyId: opts.policyId } } : {}),
+      chain: robinhoodMainnet(opts.apiKey),
+      transport: http(`https://robinhood-mainnet.g.alchemy.com/v2/${opts.apiKey}`),
+      ...(opts.policyId ? { policyId: opts.policyId } : {}),
     });
 
     console.log("Granting session key permissions...");
     
-    // Use grantPermissions to authorize the session key
-    // This submits a UserOp signed by the passkey owner
-    const result = await grantPermissions(ownerClient, {
-      expirySec: opts.expirySec,
-      key: {
-        publicKey: opts.sessionPublicKey,
-        type: "secp256k1",
+    // Grant permissions to the session key
+    // This will prompt for Face ID and submit a UserOp
+    const result = await ownerClient.grantPermissions({
+      expiry: opts.expirySec,
+      signer: {
+        type: "key",
+        data: {
+          type: "secp256k1",
+          publicKey: opts.sessionPublicKey,
+        },
       },
       permissions: opts.permissions as any,
     });
