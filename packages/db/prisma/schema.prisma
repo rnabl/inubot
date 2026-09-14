@@ -8,12 +8,13 @@ datasource db {
 }
 
 model User {
-  id         String   @id @default(cuid())
-  telegramId String   @unique
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  slippageBps Int     @default(100)
-  wallet     Wallet?
+  id                    String   @id @default(cuid())
+  telegramId            String   @unique
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  slippageBps           Int      @default(100)
+  defaultWithdrawAddress String?
+  wallet                Wallet?
 }
 
 model Wallet {
