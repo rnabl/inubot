@@ -1,0 +1,30 @@
+{
+  "name": "@inubot/bot",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "test": "tsx --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "@inubot/db": "workspace:*",
+    "@inubot/route": "workspace:*",
+    "@inubot/shared": "workspace:*",
+    "@inubot/wallet": "workspace:*",
+    "@hono/node-server": "^1.19.5",
+    "grammy": "^1.38.3",
+    "hono": "^4.9.9",
+    "dotenv": "^16.6.1",
+    "qrcode": "^1.5.4",
+    "viem": "^2.38.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "@types/qrcode": "^1.5.5",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

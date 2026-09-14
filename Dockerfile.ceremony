@@ -1,0 +1,21 @@
+FROM node:22-slim AS builder
+RUN corepack enable && corepack prepare pnpm@10.29.3 --activate
+WORKDIR /app
+
+# Install dependencies
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY tsconfig.base.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY apps/ceremony/package.json ./apps/ceremony/
+RUN pnpm install --frozen-lockfile
+
+# Copy source and build
+COPY packages/ ./packages/
+COPY apps/ceremony/ ./apps/ceremony/
+RUN pnpm --filter @inubot/ceremony build
+
+# Serve static files
+FROM nginx:alpine
+COPY --from=builder /app/apps/ceremony/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

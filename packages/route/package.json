@@ -1,0 +1,21 @@
+{
+  "name": "@inubot/route",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "tsx --test src/**/*.test.ts",
+    "smoke": "tsx src/smoke.ts"
+  },
+  "dependencies": {
+    "@inubot/shared": "workspace:*",
+    "viem": "^2.38.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "tsx": "^4.20.5"
+  }
+}

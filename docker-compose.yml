@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: inubot
+      POSTGRES_PASSWORD: inubot
+      POSTGRES_DB: inubot
+    ports:
+      - "5432:5432"
+    volumes:
+      - inubot-pg:/var/lib/postgresql/data
+
+volumes:
+  inubot-pg:

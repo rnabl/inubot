@@ -1,0 +1,25 @@
+{
+  "name": "@inubot/ceremony",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@account-kit/infra": "^4.88.5",
+    "@account-kit/smart-contracts": "^4.88.5",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "viem": "^2.38.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.3",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7"
+  }
+}

@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(cuid())
+  telegramId String   @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  slippageBps Int     @default(100)
+  wallet     Wallet?
+}
+
+model Wallet {
+  id           String       @id @default(cuid())
+  userId       String       @unique
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address      String       @unique
+  credentialId String?
+  publicKey    String?
+  createdAt    DateTime     @default(now())
+  sessionKeys  SessionKey[]
+  dailySpends  DailySpend[]
+  txs          Tx[]
+}
+
+model SessionKey {
+  id                   String    @id @default(cuid())
+  walletId             String
+  wallet               Wallet    @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  publicAddress        String
+  encryptedPrivateKey  String
+  iv                   String
+  tag                  String
+  permissionsJson      String
+  dailyCapWei          String
+  lifetimeAllowanceWei String
+  expiresAt            DateTime
+  revokedAt            DateTime?
+  createdAt            DateTime  @default(now())
+}
+
+model DailySpend {
+  id       String   @id @default(cuid())
+  walletId String
+  wallet   Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  day      DateTime @db.Date
+  spentWei String
+  gasWei   String   @default("0")
+
+  @@unique([walletId, day])
+}
+
+model Tx {
+  id        String   @id @default(cuid())
+  walletId  String
+  wallet    Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  callId    String?
+  txHash    String?
+  tokenIn   String
+  tokenOut  String
+  amountIn  String
+  amountOut String?
+  status    String
+  error     String?
+  createdAt DateTime @default(now())
+}
+
+model CeremonyNonce {
+  token     String   @id
+  telegramId String
+  sessionPublicAddress String
+  encryptedPrivateKey  String
+  iv        String
+  tag       String
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+}

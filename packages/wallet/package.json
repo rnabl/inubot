@@ -1,0 +1,23 @@
+{
+  "name": "@inubot/wallet",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "tsx --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "@alchemy/common": "^5.2.0",
+    "@alchemy/wallet-apis": "^5.2.0",
+    "@inubot/route": "workspace:*",
+    "@inubot/shared": "workspace:*",
+    "viem": "^2.38.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "tsx": "^4.20.5"
+  }
+}
