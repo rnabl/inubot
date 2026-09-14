@@ -11,12 +11,26 @@ export function App() {
   const [address, setAddress] = useState<string>("");
   const [error, setError] = useState<string>("");
 
+  // Detect Telegram WebView
+  const isInTelegramBrowser = useMemo(() => {
+    const ua = navigator.userAgent || "";
+    return ua.includes("TelegramBot") || ua.includes("Telegram");
+  }, []);
+
   useEffect(() => {
     if (!token) {
       setError("Open this page from the Telegram /start button.");
       setStatus("error");
       return;
     }
+    
+    // If in Telegram browser, show instructions instead of trying to create passkey
+    if (isInTelegramBrowser) {
+      setError("Please tap the ⋯ (three dots) in the top right and select 'Open in Safari' to continue.");
+      setStatus("error");
+      return;
+    }
+    
     fetch(`/api/ceremony/bootstrap?t=${encodeURIComponent(token)}`)
       .then(async (res) => {
         const body = (await res.json()) as Bootstrap & { error?: string };
@@ -33,7 +47,7 @@ export function App() {
         setError(err instanceof Error ? err.message : String(err));
         setStatus("error");
       });
-  }, [token]);
+  }, [token, isInTelegramBrowser]);
 
   async function onCreate() {
     if (!bootstrap) return;
