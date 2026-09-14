@@ -52,12 +52,14 @@ export function App() {
     setStatus("working");
     setError("");
     try {
-      const credential = await createPasskey(bootstrap.rpId, `tg:${bootstrap.telegramId}`);
-      const accountAddress = await requestWebAuthnAccount(bootstrap.alchemyApiKey, bootstrap.rpId, credential);
+      // Use browser hostname to ensure rpId matches origin
+      const rpId = window.location.hostname;
+      const credential = await createPasskey(rpId, `tg:${bootstrap.telegramId}`);
+      const accountAddress = await requestWebAuthnAccount(bootstrap.alchemyApiKey, rpId, credential);
       const permissions = await createAndGrantSession({
         apiKey: bootstrap.alchemyApiKey,
         policyId: bootstrap.policyId,
-        rpId: bootstrap.rpId,
+        rpId,
         credential,
         accountAddress,
         sessionPublicKey: bootstrap.sessionPublicKey,

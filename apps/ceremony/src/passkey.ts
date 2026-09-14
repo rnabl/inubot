@@ -24,10 +24,15 @@ export async function createPasskey(rpId: string, userName: string): Promise<Pas
     throw new Error("This browser cannot create a passkey. Open the link in Safari or Chrome.");
   }
 
+  // Use the current hostname as rpId to ensure it matches the origin
+  const actualRpId = window.location.hostname;
+  console.log("Creating passkey with rpId:", actualRpId, "(server sent:", rpId, ")");
+  console.log("Current origin:", window.location.origin);
+
   const credential = (await navigator.credentials.create({
     publicKey: {
       challenge: crypto.getRandomValues(new Uint8Array(32)),
-      rp: { name: "InuBot", id: rpId },
+      rp: { name: "InuBot", id: actualRpId },
       user: {
         id: crypto.getRandomValues(new Uint8Array(16)),
         name: userName,
@@ -38,7 +43,6 @@ export async function createPasskey(rpId: string, userName: string): Promise<Pas
         { type: "public-key", alg: -257 },
       ],
       authenticatorSelection: {
-        authenticatorAttachment: "platform",
         residentKey: "preferred",
         userVerification: "required",
       },
