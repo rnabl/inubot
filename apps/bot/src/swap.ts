@@ -99,12 +99,6 @@ export async function executeSwap(opts: {
     opts.env.SESSION_KEY_SECRET,
   ) as Hex;
   const signer = sessionAccountFromPrivateKey(privateKey);
-  let permissions: unknown = undefined;
-  try {
-    permissions = JSON.parse(session.permissionsJson);
-  } catch {
-    permissions = undefined;
-  }
 
   const tx = await prisma.tx.create({
     data: {
@@ -124,7 +118,7 @@ export async function executeSwap(opts: {
       account: wallet.address as Address,
       signer,
       calls: built.calls,
-      permissions,
+      // Don't pass permissions - they were already granted during setup
     });
     const status = (await waitForCall({
       apiKey: opts.env.ALCHEMY_API_KEY,
