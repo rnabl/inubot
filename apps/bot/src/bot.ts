@@ -12,15 +12,18 @@ import { createRobinhoodPublicClient } from "@inubot/wallet";
 import { computeMinOut, reviewedAmountOut } from "@inubot/route";
 import type { Env } from "./env.js";
 import { explorerAddress, explorerTx, feeLine, formatTokenAmount, shortAddress } from "./format.js";
-import { clearPending, createPending, getPending, updatePending } from "./pending.js";
+import { clearPending, createPending, getPending, updatePending, createPendingWithdraw, getPendingWithdraw, getAnyPendingWithdraw, clearPendingWithdraw } from "./pending.js";
 import { signCeremonyToken } from "./ceremony-token.js";
 import { executeSwap, remainingForUser, spentToday } from "./swap.js";
 import { activeSession, ensureUser, getUserByTelegram } from "./users.js";
 
-function ceremonyUrl(env: Env, telegramId: string): string {
+function ceremonyUrl(env: Env, telegramId: string, mode: "setup" | "withdraw" = "setup"): string {
   const token = signCeremonyToken(telegramId, env.CEREMONY_SECRET);
   const url = new URL(env.CEREMONY_URL);
   url.searchParams.set("t", token);
+  if (mode === "withdraw") {
+    url.searchParams.set("mode", "withdraw");
+  }
   return url.toString();
 }
 
@@ -151,6 +154,102 @@ export function createBot(env: Env) {
 
   bot.on("message:text", async (ctx, next) => {
     const text = ctx.message.text.trim();
+    const telegramId = String(ctx.from.id);
+    
+    // Check for pending withdraw
+    const pendingW = getAnyPendingWithdraw(telegramId);
+    if (pendingW) {
+      if (pendingW.type === "set_address") {
+        // Setting default withdraw address
+        if (text.toLowerCase() === "clear") {
+          await prisma.user.update({
+            where: { telegramId },
+            data: { defaultWithdrawAddress: null },
+          });
+          clearPendingWithdraw(telegramId, pendingW.id);
+          await ctx.reply("Default withdraw address cleared.");
+          return;
+        }
+        if (!ADDRESS_RE.test(text)) {
+          await ctx.reply("Invalid ETH address. Please send a valid 0x address.");
+          return;
+        }
+        await prisma.user.update({
+          where: { telegramId },
+          data: { defaultWithdrawAddress: text },
+        });
+        clearPendingWithdraw(telegramId, pendingW.id);
+        await ctx.reply(`Default withdraw address set to:\n\`${text}\``, { parse_mode: "Markdown" });
+        return;
+      }
+      
+      if (pendingW.type === "quick") {
+        // Quick withdraw - need amount
+        const amount = parseFloat(text);
+        if (isNaN(amount) || amount <= 0) {
+          await ctx.reply("Invalid amount. Please send a valid number (e.g., 0.1)");
+          return;
+        }
+        pendingW.amount = text;
+        updatePendingWithdraw(pendingW);
+        
+        // Create withdrawal URL and show confirmation
+        const url = ceremonyUrl(env, telegramId, "withdraw");
+        await ctx.reply(
+          [
+            `💸 Withdraw ${amount} ETH`,
+            `To: \`${pendingW.recipient}\``,
+            ``,
+            `Tap below to confirm with Face ID:`,
+          ].join("\n"),
+          {
+            parse_mode: "Markdown",
+            reply_markup: new InlineKeyboard().url("Confirm Withdrawal (Face ID)", url),
+          }
+        );
+        return;
+      }
+      
+      if (pendingW.type === "custom") {
+        // Custom withdraw - need address and amount
+        const parts = text.split(/\s+/);
+        if (parts.length !== 2) {
+          await ctx.reply("Please send address and amount separated by space:\n0x123...abc 0.1");
+          return;
+        }
+        const [addr, amtStr] = parts;
+        if (!ADDRESS_RE.test(addr)) {
+          await ctx.reply("Invalid ETH address.");
+          return;
+        }
+        const amount = parseFloat(amtStr);
+        if (isNaN(amount) || amount <= 0) {
+          await ctx.reply("Invalid amount.");
+          return;
+        }
+        pendingW.recipient = addr;
+        pendingW.amount = amtStr;
+        updatePendingWithdraw(pendingW);
+        
+        // Create withdrawal URL and show confirmation
+        const url = ceremonyUrl(env, telegramId, "withdraw");
+        await ctx.reply(
+          [
+            `💸 Withdraw ${amount} ETH`,
+            `To: \`${addr}\``,
+            ``,
+            `Tap below to confirm with Face ID:`,
+          ].join("\n"),
+          {
+            parse_mode: "Markdown",
+            reply_markup: new InlineKeyboard().url("Confirm Withdrawal (Face ID)", url),
+          }
+        );
+        return;
+      }
+    }
+    
+    // Normal flow - check for contract address
     if (text.startsWith("/")) return next();
     if (!ADDRESS_RE.test(text)) return next();
     await sendTokenCard(ctx, route, text);
@@ -300,6 +399,8 @@ export function createBot(env: Env) {
 
   bot.callbackQuery("settings:withdraw", async (ctx) => {
     await ctx.answerCallbackQuery();
+    const telegramId = String(ctx.from.id);
+    const pending = createPendingWithdraw({ telegramId, type: "set_address" });
     await ctx.editMessageText(
       [
         `📤 Default Withdraw Address`,
@@ -309,17 +410,23 @@ export function createBot(env: Env) {
         `This allows quick withdrawals with one tap.`,
         `Send "clear" to remove the current default.`,
       ].join("\n"),
-      { reply_markup: new InlineKeyboard().text("🔙 Back", "settings") }
+      { reply_markup: new InlineKeyboard().text("🔙 Cancel", `cancel_withdraw:${pending.id}`) }
     );
   });
 
   bot.callbackQuery("withdraw:quick", async (ctx) => {
     await ctx.answerCallbackQuery();
-    const user = await getUserByTelegram(String(ctx.from.id));
+    const telegramId = String(ctx.from.id);
+    const user = await getUserByTelegram(telegramId);
     if (!user?.defaultWithdrawAddress) {
       await ctx.answerCallbackQuery({ text: "No default address set!", show_alert: true });
       return;
     }
+    const pending = createPendingWithdraw({ 
+      telegramId, 
+      type: "quick",
+      recipient: user.defaultWithdrawAddress 
+    });
     await ctx.editMessageText(
       [
         `💸 Quick Withdraw`,
@@ -328,12 +435,14 @@ export function createBot(env: Env) {
         ``,
         `Send the amount to withdraw (e.g., "0.1" for 0.1 ETH)`,
       ].join("\n"),
-      { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Cancel", "close") }
+      { parse_mode: "Markdown", reply_markup: new InlineKeyboard().text("🔙 Cancel", `cancel_withdraw:${pending.id}`) }
     );
   });
 
   bot.callbackQuery("withdraw:custom", async (ctx) => {
     await ctx.answerCallbackQuery();
+    const telegramId = String(ctx.from.id);
+    const pending = createPendingWithdraw({ telegramId, type: "custom" });
     await ctx.editMessageText(
       [
         `💸 Custom Withdraw`,
@@ -343,8 +452,15 @@ export function createBot(env: Env) {
         ``,
         `(address followed by amount in ETH)`,
       ].join("\n"),
-      { reply_markup: new InlineKeyboard().text("🔙 Cancel", "close") }
+      { reply_markup: new InlineKeyboard().text("🔙 Cancel", `cancel_withdraw:${pending.id}`) }
     );
+  });
+
+  bot.callbackQuery(/^cancel_withdraw:(\d+)$/, async (ctx) => {
+    const id = Number(ctx.match[1]);
+    clearPendingWithdraw(String(ctx.from.id), id);
+    await ctx.answerCallbackQuery({ text: "Cancelled" });
+    await ctx.deleteMessage();
   });
 
   bot.callbackQuery("close", async (ctx) => {

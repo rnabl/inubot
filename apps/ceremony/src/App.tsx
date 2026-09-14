@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { createAndGrantSession, requestWebAuthnAccount, type Bootstrap } from "./alchemy";
 import { createPasskey } from "./passkey";
+import { executeWithdrawal, type WithdrawBootstrap } from "./withdraw";
 
 type Status = "loading" | "ready" | "working" | "done" | "error";
 
 export function App() {
   const token = useMemo(() => new URLSearchParams(window.location.search).get("t") ?? "", []);
+  const mode = useMemo(() => new URLSearchParams(window.location.search).get("mode") ?? "setup", []);
   const [status, setStatus] = useState<Status>("loading");
   const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
+  const [withdrawData, setWithdrawData] = useState<WithdrawBootstrap | null>(null);
   const [address, setAddress] = useState<string>("");
+  const [txHash, setTxHash] = useState<string>("");
   const [error, setError] = useState<string>("");
 
   // Detect Telegram WebView
@@ -29,23 +33,39 @@ export function App() {
       return;
     }
     
-    fetch(`/api/ceremony/bootstrap?t=${encodeURIComponent(token)}`)
-      .then(async (res) => {
-        const body = (await res.json()) as Bootstrap & { error?: string };
-        if (!res.ok) throw new Error(body.error ?? "Bootstrap failed");
-        setBootstrap(body);
-        if (body.alreadySetup && body.address) {
-          setAddress(body.address);
-          setStatus("done");
-          return;
-        }
-        setStatus("ready");
-      })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : String(err));
-        setStatus("error");
-      });
-  }, [token, isInTelegramBrowser]);
+    if (mode === "withdraw") {
+      // Withdrawal mode
+      fetch(`/api/withdraw/bootstrap?t=${encodeURIComponent(token)}`)
+        .then(async (res) => {
+          const body = (await res.json()) as WithdrawBootstrap & { error?: string };
+          if (!res.ok) throw new Error(body.error ?? "Bootstrap failed");
+          setWithdrawData(body);
+          setStatus("ready");
+        })
+        .catch((err: unknown) => {
+          setError(err instanceof Error ? err.message : String(err));
+          setStatus("error");
+        });
+    } else {
+      // Setup mode
+      fetch(`/api/ceremony/bootstrap?t=${encodeURIComponent(token)}`)
+        .then(async (res) => {
+          const body = (await res.json()) as Bootstrap & { error?: string };
+          if (!res.ok) throw new Error(body.error ?? "Bootstrap failed");
+          setBootstrap(body);
+          if (body.alreadySetup && body.address) {
+            setAddress(body.address);
+            setStatus("done");
+            return;
+          }
+          setStatus("ready");
+        })
+        .catch((err: unknown) => {
+          setError(err instanceof Error ? err.message : String(err));
+          setStatus("error");
+        });
+    }
+  }, [token, mode, isInTelegramBrowser]);
 
   async function onCreate() {
     if (!bootstrap) return;
@@ -87,9 +107,32 @@ export function App() {
     }
   }
 
+  async function onWithdraw() {
+    if (!withdrawData) return;
+    setStatus("working");
+    setError("");
+    try {
+      const rpId = window.location.hostname;
+      const hash = await executeWithdrawal(withdrawData, rpId);
+      
+      const complete = await fetch("/api/withdraw/execute", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, txHash: hash }),
+      });
+      const body = (await complete.json()) as { error?: string; txHash?: string };
+      if (!complete.ok) throw new Error(body.error ?? "Could not complete withdrawal");
+      setTxHash(body.txHash ?? hash);
+      setStatus("done");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setStatus("ready");
+    }
+  }
+
   return (
     <main className="wrap">
-      <h1>InuBot wallet</h1>
+      <h1>{mode === "withdraw" ? "Withdraw ETH" : "InuBot wallet"}</h1>
       
       {isInTelegramBrowser ? (
         <div className="card" style={{ backgroundColor: "#fff3cd", border: "2px solid #ffc107", padding: "2rem" }}>
@@ -103,6 +146,50 @@ export function App() {
             and select <strong>"Open in Safari"</strong>
           </p>
         </div>
+      ) : mode === "withdraw" ? (
+        <>
+          <p>Confirm your withdrawal with Face ID to authorize this transaction.</p>
+
+          {withdrawData && status !== "done" && (
+            <div className="card">
+              <p><strong>Amount:</strong> {withdrawData.amount} ETH</p>
+              <p><strong>To:</strong> <code style={{ fontSize: "0.9em" }}>{withdrawData.recipient}</code></p>
+              <p><strong>From:</strong> <code style={{ fontSize: "0.9em" }}>{withdrawData.walletAddress}</code></p>
+            </div>
+          )}
+
+          {status === "loading" && <p>Loading…</p>}
+          {status === "ready" && (
+            <p>
+              <button type="button" onClick={onWithdraw}>
+                Confirm with Face ID
+              </button>
+            </p>
+          )}
+          {status === "working" && (
+            <p>
+              <button type="button" disabled>
+                Waiting for Face ID…
+              </button>
+            </p>
+          )}
+          {status === "done" && (
+            <div className="card">
+              <h2>✅ Withdrawal sent!</h2>
+              <p>Transaction hash:</p>
+              <p style={{ wordBreak: "break-all", fontSize: "0.85em" }}>
+                <code>{txHash}</code>
+              </p>
+              <p>Return to Telegram to continue.</p>
+            </div>
+          )}
+          {status === "error" && (
+            <div className="card" style={{ backgroundColor: "#fee", borderColor: "#c00" }}>
+              <strong style={{ color: "#c00" }}>Error:</strong>
+              <p>{error}</p>
+            </div>
+          )}
+        </>
       ) : (
         <>
           <p>

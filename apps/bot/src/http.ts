@@ -8,6 +8,7 @@ import { buildSessionPermissions, encryptSecret, generateSessionKey } from "@inu
 import { parseEther } from "viem";
 import type { Env } from "./env.js";
 import { verifyCeremonyToken } from "./ceremony-token.js";
+import { getAnyPendingWithdraw, clearPendingWithdraw } from "./pending.js";
 
 export function createHttpApp(env: Env) {
   const app = new Hono();
@@ -161,6 +162,59 @@ export function createHttpApp(env: Env) {
     });
 
     return c.json({ ok: true, address: wallet.address });
+  });
+
+  app.get("/api/withdraw/bootstrap", async (c) => {
+    const token = c.req.query("t");
+    if (!token) return c.json({ error: "Missing token" }, 400);
+    const { telegramId } = verifyCeremonyToken(token, env.CEREMONY_SECRET);
+
+    const user = await prisma.user.findUnique({
+      where: { telegramId },
+      include: { wallet: true },
+    });
+    if (!user?.wallet) {
+      return c.json({ error: "No wallet found" }, 404);
+    }
+
+    const pending = getAnyPendingWithdraw(telegramId);
+    if (!pending || !pending.recipient || !pending.amount) {
+      return c.json({ error: "No pending withdrawal" }, 404);
+    }
+
+    return c.json({
+      telegramId,
+      walletAddress: user.wallet.address,
+      rpId: env.CEREMONY_RP_ID,
+      alchemyApiKey: env.ALCHEMY_API_KEY,
+      policyId: env.ALCHEMY_GAS_POLICY_ID || null,
+      recipient: pending.recipient,
+      amount: pending.amount,
+      chainId: 4663,
+      credentialId: user.wallet.credentialId,
+      publicKey: user.wallet.publicKey,
+    });
+  });
+
+  app.post("/api/withdraw/execute", async (c) => {
+    const body = await c.req.json<{
+      token?: string;
+      txHash?: string;
+    }>();
+    if (!body.token || !body.txHash) {
+      return c.json({ error: "Missing token or txHash" }, 400);
+    }
+
+    const { telegramId } = verifyCeremonyToken(body.token, env.CEREMONY_SECRET);
+    const pending = getAnyPendingWithdraw(telegramId);
+    if (!pending) {
+      return c.json({ error: "No pending withdrawal" }, 404);
+    }
+
+    // Clear the pending withdrawal
+    clearPendingWithdraw(telegramId, pending.id);
+
+    return c.json({ ok: true, txHash: body.txHash });
   });
 
   return app;

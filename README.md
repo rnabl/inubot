@@ -24,9 +24,16 @@ Create a bot with BotFather, put the token in `.env`, and set `CEREMONY_URL` / `
 | `/start` | Create wallet (Safari Face ID) or show help |
 | `/wallet` | Address, ETH, deposit QR |
 | `/holdings` | Token balances with refresh |
-| `/settings` | Adjust slippage (0.5%, 1%, 2%, 5%) |
+| `/settings` | Adjust slippage & set default withdraw address |
+| `/withdraw` | Send ETH to any address (Face ID required) |
 | paste `0x…` | Resolve token, Buy/Sell |
 | `/help` | Command list |
+
+### Withdrawal Features
+
+- **Quick Withdraw**: Set a default withdrawal address in `/settings`, then use `/withdraw` for one-tap sends
+- **Custom Withdraw**: Send to any address by providing both recipient and amount
+- **Face ID Required**: All withdrawals require Face ID authentication for security (session keys cannot authorize arbitrary transfers)
 
 ## Smoke
 
