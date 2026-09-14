@@ -7,6 +7,8 @@ export type PendingSwap = {
   token: RouteAsset;
   amountIn: string;
   quote?: RouteQuote;
+  confirming?: boolean;
+  calls?: Array<{ to: string; data: string; value: string }>;  // Serialized calls for ceremony
   createdAt: number;
 };
 

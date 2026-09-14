@@ -217,5 +217,58 @@ export function createHttpApp(env: Env) {
     return c.json({ ok: true, txHash: body.txHash });
   });
 
+  app.get("/api/swap/bootstrap", async (c) => {
+    const token = c.req.query("t");
+    if (!token) return c.json({ error: "Missing token" }, 400);
+    const { telegramId } = verifyCeremonyToken(token, env.CEREMONY_SECRET);
+
+    const user = await prisma.user.findUnique({
+      where: { telegramId },
+      include: { wallet: true },
+    });
+    if (!user?.wallet) {
+      return c.json({ error: "No wallet found" }, 404);
+    }
+
+    const pending = getPending(telegramId, 0); // Get most recent pending swap
+    if (!pending?.confirming) {
+      return c.json({ error: "No pending swap confirmation" }, 404);
+    }
+
+    // Calls are stored in the pending swap (we'll add this)
+    const calls = (pending as any).calls;
+    if (!calls) {
+      return c.json({ error: "Swap calls not found" }, 404);
+    }
+
+    return c.json({
+      telegramId,
+      walletAddress: user.wallet.address,
+      rpId: env.CEREMONY_RP_ID,
+      alchemyApiKey: env.ALCHEMY_API_KEY,
+      policyId: env.ALCHEMY_GAS_POLICY_ID || null,
+      calls,
+      chainId: 4663,
+      credentialId: user.wallet.credentialId,
+      publicKey: user.wallet.publicKey,
+    });
+  });
+
+  app.post("/api/swap/execute", async (c) => {
+    const body = await c.req.json<{
+      token?: string;
+      txHash?: string;
+    }>();
+    if (!body.token || !body.txHash) {
+      return c.json({ error: "Missing token or txHash" }, 400);
+    }
+
+    const { telegramId } = verifyCeremonyToken(body.token, env.CEREMONY_SECRET);
+    
+    // TODO: Store tx in database, update pending swap
+    
+    return c.json({ ok: true, txHash: body.txHash });
+  });
+
   return app;
 }
