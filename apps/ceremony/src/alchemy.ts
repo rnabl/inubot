@@ -91,6 +91,7 @@ export async function createAndGrantSession(opts: {
 }): Promise<unknown> {
   try {
     const { createModularAccountV2Client } = await import("@account-kit/smart-contracts");
+    const { grantPermissions } = await import("@alchemy/wallet-apis");
     const { http } = await import("viem");
     
     console.log("Creating owner wallet client for session key grant");
@@ -112,9 +113,8 @@ export async function createAndGrantSession(opts: {
 
     console.log("Granting session key permissions...");
     
-    // Grant permissions to the session key
-    // This will prompt for Face ID and submit a UserOp
-    const result = await ownerClient.grantPermissions({
+    // Use standalone grantPermissions function with the Account Kit client
+    const result = await grantPermissions(ownerClient, {
       expiry: opts.expirySec,
       signer: {
         type: "key",
