@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["nodejs_22", "pnpm"]
+
+[phases.install]
+cmds = ["pnpm install"]
+
+[phases.build]
+cmds = ["pnpm db:generate"]
+
+[start]
+cmd = "pnpm db:migrate && pnpm --filter @inubot/bot start"
