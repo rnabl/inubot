@@ -1,14 +1,21 @@
-import { defineChain, type Address, type Hex, publicKeyToAddress } from "viem";
+import { defineChain, type Address, type Hex } from "viem";
 import { splitUncompressedKey, type PasskeyCredential } from "./passkey";
 
-export const robinhoodMainnet = defineChain({
-  id: 4663,
-  name: "Robinhood Chain",
-  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-  rpcUrls: {
-    default: { http: ["https://rpc.mainnet.chain.robinhood.com"] },
-  },
-});
+export function robinhoodMainnet(apiKey: string) {
+  return defineChain({
+    id: 4663,
+    name: "Robinhood Chain",
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+    rpcUrls: {
+      default: { 
+        http: [`https://robinhood-mainnet.g.alchemy.com/v2/${apiKey}`] 
+      },
+      public: { 
+        http: ["https://rpc.mainnet.chain.robinhood.com"] 
+      },
+    },
+  });
+}
 
 export type Bootstrap = {
   alreadySetup: boolean;
@@ -57,7 +64,7 @@ export async function requestWebAuthnAccount(
         publicKey: credential.publicKey,
       },
       rpId,
-      chain: robinhoodMainnet,
+      chain: robinhoodMainnet(apiKey),
       transport: alchemy({ apiKey }),
     });
     
@@ -93,7 +100,7 @@ export async function createAndGrantSession(opts: {
         publicKey: opts.credential.publicKey,
       },
       rpId: opts.rpId,
-      chain: robinhoodMainnet,
+      chain: robinhoodMainnet(opts.apiKey),
       transport: alchemy({ apiKey: opts.apiKey }),
       ...(opts.policyId ? { policyId: opts.policyId } : {}),
     });
