@@ -8,6 +8,7 @@
     "dev:bot": "pnpm --filter @inubot/bot dev",
     "dev:ceremony": "pnpm --filter @inubot/ceremony dev",
     "build": "pnpm -r --if-present build",
+    "start": "pnpm --filter @inubot/bot start",
     "test": "pnpm -r --if-present test",
     "db:generate": "pnpm --filter @inubot/db generate",
     "db:migrate": "pnpm --filter @inubot/db migrate",
